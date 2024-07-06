@@ -88,6 +88,21 @@ io.on('connection', (socket) => {
     const joinTime = new Date();
     socket.joinTime = joinTime;
 
+    // 안내 메시지 전송
+    const joinMessage = new Chat({
+      username: 'System',
+      room: room,
+      message: `${username} has joined the room.`,
+      timestamp: new Date()
+    });
+
+    try {
+      await joinMessage.save();
+      io.to(room).emit('chatMessage', joinMessage);
+    } catch (err) {
+      console.error('Error saving join message:', err);
+    }
+
     try {
       const messages = await Chat.find({ room, timestamp: { $gte: joinTime } }).sort({ timestamp: 1 }).exec();
       socket.emit('init', messages);
@@ -99,6 +114,22 @@ io.on('connection', (socket) => {
   socket.on('leaveRoom', async ({ username, room }) => {
     socket.leave(room);
     console.log(`${username} left room ${room}`);
+
+    // 안내 메시지 전송
+    const leaveMessage = new Chat({
+      username: 'System',
+      room: room,
+      message: `${username} has left the room.`,
+      timestamp: new Date()
+    });
+
+    try {
+      await leaveMessage.save();
+      io.to(room).emit('chatMessage', leaveMessage);
+    } catch (err) {
+      console.error('Error saving leave message:', err);
+    }
+
     await checkAndDeleteRoom(room);
   });
 
@@ -118,6 +149,22 @@ io.on('connection', (socket) => {
     console.log(`Client disconnected: ${username} from room ${room}`);
     if (room) {
       socket.leave(room);
+
+      // 안내 메시지 전송
+      const disconnectMessage = new Chat({
+        username: 'System',
+        room: room,
+        message: `${username} has disconnected.`,
+        timestamp: new Date()
+      });
+
+      try {
+        await disconnectMessage.save();
+        io.to(room).emit('chatMessage', disconnectMessage);
+      } catch (err) {
+        console.error('Error saving disconnect message:', err);
+      }
+
       await checkAndDeleteRoom(room);
     }
   });
