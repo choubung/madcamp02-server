@@ -81,12 +81,18 @@ const signInKakao = async (kakaoToken) => {
   });
 
   const { data } = result;
-  const name = data.properties.nickname;
-  const email = data.kakao_account.email;
-  const kakaoId = data.id;
-  const profileImage = data.properties.profile_image;
+  
+  console.log('Kakao API response data:', data); // 추가된 로그
 
-  if (!name || !email || !kakaoId) throw new Error("KEY_ERROR");
+  const name = data.properties?.nickname;
+  const email = data.kakao_account?.email;
+  const kakaoId = data.id;
+  const profileImage = data.properties?.profile_image;
+
+  if (!name || !email || !kakaoId) {
+    console.error('Missing required user data:', { name, email, kakaoId });
+    throw new Error("KEY_ERROR");
+  }
 
   let user = await getUserById(kakaoId);
 
@@ -117,8 +123,13 @@ const signInKakaoController = asyncWrap(async (req, res) => {
   return res.status(200).json({ accessToken: accessToken });
 });
 
-// 라우터 설정
+// POST 요청 처리
 app.post('/auth/kakao/signin', signInKakaoController);
+
+// GET 요청 처리 (테스트 목적)
+app.get('/auth/kakao/signin', (req, res) => {
+  res.send('This endpoint is only for POST requests.');
+});
 
 // 에러 처리 라우터
 app.use((err, req, res, next) => {
