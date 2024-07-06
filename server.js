@@ -44,9 +44,15 @@ io.on('connection', (socket) => {
   socket.on('joinRoom', async ({ username, room }) => {
     socket.join(room);
     console.log(`${username} joined room ${room}`);
+    
+    // 현재 시간을 기록
+    const joinTime = new Date();
 
+    socket.joinTime = joinTime; // 소켓 객체에 입장 시간을 저장
+
+    // 이후의 메시지들만 클라이언트에게 전송
     try {
-      const messages = await Chat.find({ room }).sort({ timestamp: 1 }).limit(100).exec();
+      const messages = await Chat.find({ room, timestamp: { $gte: joinTime } }).sort({ timestamp: 1 }).exec();
       socket.emit('init', messages);
     } catch (err) {
       console.error(err);
