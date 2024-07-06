@@ -54,7 +54,11 @@ const chatSchema = new mongoose.Schema({
 const Chat = mongoose.model('Chat', chatSchema);
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // 유저 조회
 const getUserById = async (kakaoId) => {
