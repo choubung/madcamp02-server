@@ -86,12 +86,16 @@ const signInKakao = async (kakaoToken) => {
 
   const { data } = result;
   
-  console.log('Kakao API response data:', data); // 추가된 로그
+  console.log('Kakao API response data:', data); // 응답 데이터 전체 출력
 
+  // 필요한 필드 추출
   const name = data?.properties?.nickname;
   const email = data?.kakao_account?.email;
   const kakaoId = data?.id;
   const profileImage = data?.properties?.profile_image;
+
+  // 필드별로 로그 출력
+  console.log('Extracted data:', { name, email, kakaoId, profileImage });
 
   if (!name || !email || !kakaoId) {
     console.error('Missing required user data:', { name, email, kakaoId });
