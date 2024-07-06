@@ -31,28 +31,34 @@ mongoose.connect(mongoUri).then(() => {
 
 const chatSchema = new mongoose.Schema({
   username: String,
+  room: String,
   message: String,
   timestamp: { type: Date, default: Date.now }
 });
 
 const Chat = mongoose.model('Chat', chatSchema);
 
-io.on('connection', async (socket) => {
+io.on('connection', (socket) => {
   console.log('New client connected');
 
-  try {
-    const messages = await Chat.find().sort({ timestamp: 1 }).limit(100).exec();
-    socket.emit('init', messages);
-  } catch (err) {
-    console.error(err);
-  }
+  socket.on('joinRoom', async ({ username, room }) => {
+    socket.join(room);
+    console.log(`${username} joined room ${room}`);
+
+    try {
+      const messages = await Chat.find({ room }).sort({ timestamp: 1 }).limit(100).exec();
+      socket.emit('init', messages);
+    } catch (err) {
+      console.error(err);
+    }
+  });
 
   socket.on('chatMessage', async (msg) => {
     console.log('Message received:', msg);
     const chatMessage = new Chat(msg);
     try {
       await chatMessage.save();
-      io.emit('chatMessage', msg);
+      io.to(msg.room).emit('chatMessage', msg);
     } catch (err) {
       console.error('Error saving chat message:', err);
     }
