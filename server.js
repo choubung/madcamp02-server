@@ -29,7 +29,6 @@ if (!mongoUri) {
 mongoose.connect(mongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  useCreateIndex: true
 })
   .then(() => {
     console.log('MongoDB connected');
