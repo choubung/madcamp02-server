@@ -47,6 +47,7 @@ io.on('connection', (socket) => {
 
   // 클라이언트로부터의 메시지 처리
   socket.on('chatMessage', (msg) => {
+    console.log('Message received:', msg); // 메시지 수신 로그 출력
     const chatMessage = new Chat(msg);
     chatMessage.save().then(() => {
       io.emit('chatMessage', msg); // 모든 클라이언트로 메시지 전송
