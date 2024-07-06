@@ -1,34 +1,60 @@
 const express = require('express');
-const bodyParser = require('body-parser');
+const http = require('http');
+const socketIo = require('socket.io');
 const mongoose = require('mongoose');
-const serverfunctions = require('./serverfunction.js');
+require('dotenv').config();
 
-require('dotenv').config(); // .env 파일에서 환경 변수 로드
-
-// Express 앱 초기화
 const app = express();
-const port = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io = socketIo(server);
 
-// 미들웨어 설정
-app.use(bodyParser.json());
-
-// MongoDB 연결 설정, 성공 여부를 log로 보내줌
-const mongoURI = process.env.MONGO_URI; // .env 파일에서 MongoDB URI 가져오기
-mongoose.connect(mongoURI, {
-  tls: true, // TLS 사용
-  tlsAllowInvalidCertificates: true // 유효하지 않은 인증서 허용
-}).then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-
-// 라우트 설정
-app.post('/todos', serverfunctions.createTodo);
-app.get('/todos', serverfunctions.getTodos);
-
-// 서버 시작
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}/`);
+// MongoDB 연결
+mongoose.connect(process.env.MONGODB_URI, {
+	useNewUrlParser: true,
+	useUnifiedTopology: true,
+}).then(() => {
+	console.log('MongoDB connected');
+}).catch(err => {
+	console.error('MongoDB connection error:', err);
 });
 
+// MongoDB Schema 및 Model 정의
+const chatSchema = new mongoose.Schema({
+	username: String,
+	message: String,
+	timestamp: { type: Date, default: Date.now }
+});
+
+const Chat = mongoose.model('Chat', chatSchema);
+
+// 클라이언트로부터의 연결 처리
+io.on('connection', (socket) => {
+	console.log('New client connected');
+
+	// 이전 채팅 메시지 로드
+	Chat.find().sort({timestamp: 1 }).limit(100).exec((err, messages) => {
+		if (err) return console.error(err);
+		socket.emit('init', messages);
+	});
+
+	// 클라이언트로부터의 메시지 처리
+	socket.on('chatMessage', (msg) => {
+		const chatMessage = new Chat(msg);
+		chatMessage.save().then(() => {
+			io.emit('chatMessage', msg);
+		}).catch(err => {
+			console.error('Error saving chat message:', err);
+		});
+	});
+
+	// 연결 종료 처리
+	socket.on('disconnect', () => {
+		console.log('Client disconnected');
+	});
+});
+
+// 서버 시작
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+	console.log('Server running on port ${port}');
+});
