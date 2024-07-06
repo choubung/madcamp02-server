@@ -43,14 +43,13 @@ io.on('connection', (socket) => {
 
   socket.on('joinRoom', async ({ username, room }) => {
     socket.join(room);
+    socket.username = username;
+    socket.room = room;
     console.log(`${username} joined room ${room}`);
     
-    // 현재 시간을 기록
     const joinTime = new Date();
+    socket.joinTime = joinTime;
 
-    socket.joinTime = joinTime; // 소켓 객체에 입장 시간을 저장
-
-    // 이후의 메시지들만 클라이언트에게 전송
     try {
       const messages = await Chat.find({ room, timestamp: { $gte: joinTime } }).sort({ timestamp: 1 }).exec();
       socket.emit('init', messages);
@@ -59,9 +58,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('leaveRoom', ({ username, room }) => {
+  socket.on('leaveRoom', async ({ username, room }) => {
     socket.leave(room);
     console.log(`${username} left room ${room}`);
+    await checkAndDeleteRoom(room);
   });
 
   socket.on('chatMessage', async (msg) => {
@@ -75,9 +75,26 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
+  socket.on('disconnect', async () => {
+    const { username, room } = socket;
+    console.log(`Client disconnected: ${username} from room ${room}`);
+    if (room) {
+      socket.leave(room);
+      await checkAndDeleteRoom(room);
+    }
   });
+
+  async function checkAndDeleteRoom(room) {
+    const clients = io.sockets.adapter.rooms.get(room);
+    if (!clients || clients.size === 0) {
+      try {
+        await Chat.deleteMany({ room });
+        console.log(`Deleted all messages in room ${room}`);
+      } catch (err) {
+        console.error(`Error deleting messages in room ${room}:`, err);
+      }
+    }
+  }
 });
 
 server.listen(port, () => {
