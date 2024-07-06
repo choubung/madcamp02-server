@@ -1,10 +1,14 @@
 {
   "dependencies": {
     "body-parser": "^1.20.2",
+    "cookie-parser": "^1.4.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-session": "^1.18.0",
     "mongodb": "^6.8.0",
-    "mongoose": "^8.4.4"
+    "mongoose": "^8.4.4",
+    "morgan": "^1.10.0",
+    "nunjucks": "^3.2.4"
   },
   "name": "madcamp02-server",
   "version": "1.0.0",
@@ -14,7 +18,7 @@
     "start": "node server.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Wonjung Kim",
   "license": "ISC",
-  "description": ""
+  "description": "web-socket chatting server"
 }
