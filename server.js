@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const axios = require('axios');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
@@ -23,11 +24,21 @@ if (!mongoUri) {
   process.exit(1);
 }
 
-mongoose.connect(mongoUri).then(() => {
-  console.log('MongoDB connected');
-}).catch(err => {
-  console.error('MongoDB connection error:', err);
+mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('MongoDB connected');
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+  });
+
+const userSchema = new mongoose.Schema({
+  kakaoId: String,
+  nickname: String,
+  profileImage: String,
 });
+
+const User = mongoose.model('User', userSchema);
 
 const chatSchema = new mongoose.Schema({
   username: String,
@@ -38,6 +49,33 @@ const chatSchema = new mongoose.Schema({
 
 const Chat = mongoose.model('Chat', chatSchema);
 
+app.use(express.json());
+app.use(cors());
+
+app.post('/login', async (req, res) => {
+  const token = req.headers.authorization.split(' ')[1];
+
+  try {
+    const response = await axios.get('https://kapi.kakao.com/v2/user/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const kakaoAccount = response.data.kakao_account;
+    const user = await User.findOneAndUpdate(
+      { kakaoId: response.data.id },
+      {
+        nickname: kakaoAccount.profile.nickname,
+        profileImage: kakaoAccount.profile.profile_image_url,
+      },
+      { upsert: true, new: true }
+    );
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(401).send('카카오 인증 실패');
+  }
+});
+
 io.on('connection', (socket) => {
   console.log('New client connected');
 
@@ -46,7 +84,7 @@ io.on('connection', (socket) => {
     socket.username = username;
     socket.room = room;
     console.log(`${username} joined room ${room}`);
-    
+
     const joinTime = new Date();
     socket.joinTime = joinTime;
 
