@@ -1,16 +1,65 @@
-// 1. 서버 사용을 위해서 http 모듈을 http 변수에 담는다. (모듈과 변수의 이름은 달라도 된다.) 
-var http = require('http'); 
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+require('dotenv').config(); // .env 파일에서 환경 변수 로드
 
-// 2. http 모듈로 서버를 생성한다.
-//    아래와 같이 작성하면 서버를 생성한 후, 사용자로 부터 http 요청이 들어오면 function 블럭내부의 코드를 실행해서 응답한다.
-var server = http.createServer(function(request,response){ 
+// Express 앱 초기화
+const app = express();
+const port = process.env.PORT || 3000;
 
-    response.writeHead(200,{'Content-Type':'text/html'});
-    response.end('Hello node.js!!');
+// 미들웨어 설정
+app.use(bodyParser.json());
 
+// MongoDB 연결 설정
+const mongoURI = process.env.MONGO_URI; // .env 파일에서 MongoDB URI 가져오기
+mongoose.connect(mongoURI, {
+  tls: true, // TLS 사용
+  tlsAllowInvalidCertificates: true // 유효하지 않은 인증서 허용
+}).then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+
+// Todo 모델 설정
+const todoSchema = new mongoose.Schema({
+  title: String,
+  completed: Boolean,
 });
 
-// 3. listen 함수로 8080 포트를 가진 서버를 실행한다. 서버가 실행된 것을 콘솔창에서 확인하기 위해 'Server is running...' 로그를 출력한다
-server.listen(8080, function(){ 
-    console.log('Server is running...');
+const Todo = mongoose.model('Todo', todoSchema);
+
+// createTodo 함수
+const createTodo = async (req, res) => {
+  const { title, completed } = req.body;
+  const newTodo = new Todo({
+    title,
+    completed: completed || false,
+  });
+
+  try {
+    const savedTodo = await newTodo.save();
+    res.status(201).json(savedTodo);
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating todo', error });
+  }
+};
+
+// getTodos 함수
+const getTodos = async (req, res) => {
+  try {
+    const todos = await Todo.find();
+    res.status(200).json(todos);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching todos', error });
+  }
+};
+
+// 라우트 설정
+app.post('/todos', createTodo);
+app.get('/todos', getTodos);
+
+// 서버 시작
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}/`);
 });
