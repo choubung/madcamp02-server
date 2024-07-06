@@ -37,22 +37,25 @@ const chatSchema = new mongoose.Schema({
 
 const Chat = mongoose.model('Chat', chatSchema);
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   console.log('New client connected');
 
-  Chat.find().sort({ timestamp: 1 }).limit(100).exec((err, messages) => {
-    if (err) return console.error(err);
+  try {
+    const messages = await Chat.find().sort({ timestamp: 1 }).limit(100).exec();
     socket.emit('init', messages);
-  });
+  } catch (err) {
+    console.error(err);
+  }
 
-  socket.on('chatMessage', (msg) => {
+  socket.on('chatMessage', async (msg) => {
     console.log('Message received:', msg);
     const chatMessage = new Chat(msg);
-    chatMessage.save().then(() => {
+    try {
+      await chatMessage.save();
       io.emit('chatMessage', msg);
-    }).catch(err => {
+    } catch (err) {
       console.error('Error saving chat message:', err);
-    });
+    }
   });
 
   socket.on('disconnect', () => {
