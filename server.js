@@ -6,6 +6,7 @@ const socketIo = require('socket.io');
 const axios = require('axios');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,13 +19,18 @@ const io = socketIo(server, {
 
 const mongoUri = process.env.MONGODB_URI;
 const port = process.env.PORT || 3000;
+const TOKENSECRET = process.env.TOKKENSECRET || "your_jwt_secret_key";
 
 if (!mongoUri) {
   console.error('MongoDB URI is not defined in .env file');
   process.exit(1);
 }
 
-mongoose.connect(mongoUri)
+mongoose.connect(mongoUri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  useCreateIndex: true
+})
   .then(() => {
     console.log('MongoDB connected');
   })
@@ -32,13 +38,15 @@ mongoose.connect(mongoUri)
     console.error('MongoDB connection error:', err);
   });
 
+// MongoDB 스키마 및 모델 설정
 const userSchema = new mongoose.Schema({
-  kakaoId: String,
-  nickname: String,
-  profileImage: String,
+  kakao_id: { type: String, required: true, unique: true },
+  account_email: { type: String, required: true },
+  name: { type: String, required: true },
+  profile_image: { type: String }
 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 const chatSchema = new mongoose.Schema({
   username: String,
@@ -52,28 +60,74 @@ const Chat = mongoose.model('Chat', chatSchema);
 app.use(express.json());
 app.use(cors());
 
-app.post('/login', async (req, res) => {
-  const token = req.headers.authorization.split(' ')[1];
+// 유저 조회
+const getUserById = async (kakaoId) => {
+  return await User.findOne({ kakao_id: kakaoId });
+};
 
-  try {
-    const response = await axios.get('https://kapi.kakao.com/v2/user/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+// 유저 등록
+const signUp = async (email, name, kakaoId, profileImage) => {
+  const newUser = new User({
+    kakao_id: kakaoId,
+    account_email: email,
+    name: name,
+    profile_image: profileImage
+  });
+  return await newUser.save();
+};
 
-    const kakaoAccount = response.data.kakao_account;
-    const user = await User.findOneAndUpdate(
-      { kakaoId: response.data.id },
-      {
-        nickname: kakaoAccount.profile.nickname,
-        profileImage: kakaoAccount.profile.profile_image_url,
-      },
-      { upsert: true, new: true }
-    );
+// 카카오 로그인 서비스
+const signInKakao = async (kakaoToken) => {
+  const result = await axios.get("https://kapi.kakao.com/v2/user/me", {
+    headers: {
+      Authorization: `Bearer ${kakaoToken}`,
+    },
+  });
 
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(401).send('카카오 인증 실패');
+  const { data } = result;
+  const name = data.properties.nickname;
+  const email = data.kakao_account.email;
+  const kakaoId = data.id;
+  const profileImage = data.properties.profile_image;
+
+  if (!name || !email || !kakaoId) throw new Error("KEY_ERROR");
+
+  let user = await getUserById(kakaoId);
+
+  if (!user) {
+    user = await signUp(email, name, kakaoId, profileImage);
   }
+
+  return jwt.sign({ kakao_id: user.kakao_id }, TOKENSECRET);
+};
+
+// 에러 처리 미들웨어
+const asyncWrap = (fn) => {
+  return (req, res, next) => {
+    fn(req, res, next).catch(next);
+  };
+};
+
+// 카카오 로그인 컨트롤러
+const signInKakaoController = asyncWrap(async (req, res) => {
+  const headers = req.headers["authorization"];
+  if (!headers) {
+    return res.status(400).json({ message: "Authorization header is missing" });
+  }
+  const kakaoToken = headers.split(" ")[1];
+
+  const accessToken = await signInKakao(kakaoToken);
+  
+  return res.status(200).json({ accessToken: accessToken });
+});
+
+// 라우터 설정
+app.post('/auth/kakao/signin', signInKakaoController);
+
+// 에러 처리 라우터
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
 });
 
 io.on('connection', (socket) => {
