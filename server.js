@@ -53,6 +53,11 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('leaveRoom', ({ username, room }) => {
+    socket.leave(room);
+    console.log(`${username} left room ${room}`);
+  });
+
   socket.on('chatMessage', async (msg) => {
     console.log('Message received:', msg);
     const chatMessage = new Chat(msg);
