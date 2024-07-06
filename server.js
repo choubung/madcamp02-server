@@ -1,18 +1,26 @@
+// 환경 변수를 가장 먼저 설정
+require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
-require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+// 환경 변수가 제대로 로드되었는지 확인
+const mongoUri = process.env.MONGODB_URI;
+const port = process.env.PORT || 3000;
+
+if (!mongoUri) {
+  console.error('MongoDB URI is not defined in .env file');
+  process.exit(1);
+}
+
 // MongoDB 연결
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
+mongoose.connect(mongoUri).then(() => {
   console.log('MongoDB connected');
 }).catch(err => {
   console.error('MongoDB connection error:', err);
@@ -54,7 +62,6 @@ io.on('connection', (socket) => {
 });
 
 // 서버 시작
-const port = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
