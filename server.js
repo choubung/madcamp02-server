@@ -117,7 +117,11 @@ const signInKakao = async (kakaoToken) => {
     await user.save();
   }
 
-  console.log('Add data:', { name, email, kakaoId, profileImage, user.jwt_token, user.invite_code });
+  if (user) {
+    console.log('Add data:', { name, email, kakaoId, profileImage, jwt_token: user.jwt_token, invite_code: user.invite_code });
+  } else {
+    console.error('User object is undefined or null');
+  }
 
   return user.jwt_token;
 };
