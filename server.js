@@ -154,6 +154,24 @@ app.get('/auth/kakao/signin', (req, res) => {
   res.send('This endpoint is only for POST requests.');
 });
 
+// JWT 인증 엔드포인트 추가
+app.post('/auth', (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).send('Token is missing');
+  }
+
+  jwt.verify(token, TOKENSECRET, (err, user) => {
+    if (err) {
+      return res.status(403).send('Invalid token');
+    }
+
+    // 토큰이 유효한 경우
+    res.status(200).send('Authenticated');
+  });
+});
+
 // 에러 처리 라우터
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -162,6 +180,7 @@ app.use((err, req, res, next) => {
 
 const authenticateJWT = (socket, next) => {
   const token = socket.handshake.auth.token;
+  console.log("Received token: ", token);
   if (!token) {
     const err = new Error("Not authorized");
     err.data = { content: "Please retry later" }; // additional details
@@ -174,6 +193,7 @@ const authenticateJWT = (socket, next) => {
     if (err) {
       return next(new Error("Not authorized"));
     }
+    console.log("JWT verified, user: ", user);
     socket.user = user;
     next();
   });
