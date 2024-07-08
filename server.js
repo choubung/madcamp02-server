@@ -178,14 +178,6 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
-const jwt = require('jsonwebtoken');
-const io = require('socket.io')(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
 io.use((socket, next) => {
   const token = socket.handshake.query.token;
   if (!token) {
