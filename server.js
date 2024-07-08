@@ -39,7 +39,9 @@ const userSchema = new mongoose.Schema({
   kakao_id: { type: String, required: true, unique: true },
   account_email: { type: String, required: true },
   name: { type: String, required: true },
-  profile_image: { type: String }
+  profile_image: { type: String },
+  jwt_token: { type: String },  // JWT 토큰 필드 추가
+  invite_code: { type: String } // 채팅방 초대 코드 필드 추가
 });
 
 const User = mongoose.model("User", userSchema);
@@ -67,11 +69,14 @@ const getUserById = async (kakaoId) => {
 
 // 유저 등록
 const signUp = async (email, name, kakaoId, profileImage) => {
+  const jwtToken = jwt.sign({ kakao_id: kakaoId }, TOKENSECRET);
   const newUser = new User({
     kakao_id: kakaoId,
     account_email: email,
     name: name,
-    profile_image: profileImage
+    profile_image: profileImage,
+    jwt_token: jwtToken, // JWT 토큰 저장
+    invite_code: "" // invite_code는 아직 없다
   });
   return await newUser.save();
 };
@@ -106,9 +111,13 @@ const signInKakao = async (kakaoToken) => {
 
   if (!user) {
     user = await signUp(email, name, kakaoId, profileImage);
+  } else {
+    // 기존 유저인 경우 jwt_token 갱신
+    user.jwt_token = jwt.sign({ kakao_id: user.kakao_id }, TOKENSECRET);
+    await user.save();
   }
 
-  return jwt.sign({ kakao_id: user.kakao_id }, TOKENSECRET);
+  return user.jwt_token;
 };
 
 // 에러 처리 미들웨어
@@ -145,50 +154,84 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
+const authenticateJWT = (socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    const err = new Error("Not authorized");
+    err.data = { content: "Please retry later" }; // additional details
+    return next(err);
+  }
+  
+  jwt.verify(token, TOKENSECRET, (err, user) => {
+    if (err) {
+      return next(new Error("Not authorized"));
+    }
+    socket.user = user;
+    next();
+  });
+};
+
+io.use(authenticateJWT);
+
 io.on('connection', (socket) => {
   console.log('New client connected');
 
-  socket.on('joinRoom', async ({ username, room }) => {
-    socket.join(room);
-    socket.username = username;
-    socket.room = room;
-    console.log(`${username} joined room ${room}`);
-
-    const joinTime = new Date();
-    socket.joinTime = joinTime;
-
-    // 안내 메시지 전송
-    const joinMessage = new Chat({
-      username: 'System',
-      room: room,
-      message: `${username} has joined the room.`,
-      timestamp: new Date()
-    });
+  socket.on('joinRoom', async ({ inviteCode }) => {
+    const { kakao_id } = socket.user;
 
     try {
+      const user = await User.findOne({ kakao_id });
+      if (!user) {
+        return socket.emit('error', 'User not found');
+      }
+
+      if (user.invite_code == "") {
+        user.invite_code = inviteCode;
+      } else if (user.invite_code !== inviteCode) {
+        return socket.emit('error', 'Invalid invite code');
+      }
+
+      const room = inviteCode; // 초대 코드를 방 이름으로 사용
+      socket.join(room);
+      socket.room = room;
+
+      console.log(`${user.name} joined room ${room}`);
+
+      const joinTime = new Date();
+      socket.joinTime = joinTime;
+
+      // 안내 메시지 전송
+      const joinMessage = new Chat({
+        username: 'System',
+        room: room,
+        message: `${user.name} has joined the room.`,
+        timestamp: new Date()
+      });
+
       await joinMessage.save();
       io.to(room).emit('chatMessage', joinMessage);
-    } catch (err) {
-      console.error('Error saving join message:', err);
-    }
 
-    try {
       const messages = await Chat.find({ room, timestamp: { $gte: joinTime } }).sort({ timestamp: 1 }).exec();
       socket.emit('init', messages);
     } catch (err) {
       console.error(err);
+      socket.emit('error', 'An error occurred while joining the room');
     }
   });
 
-  socket.on('leaveRoom', async ({ username, room }) => {
+  socket.on('leaveRoom', async () => {   
+    const { kakao_id } = socket.user;
+    const { room } = socket;
+    if (!room) return;
+
     socket.leave(room);
-    console.log(`${username} left room ${room}`);
+    console.log(`${kakao_id} left room ${room}`);
 
     // 안내 메시지 전송
     const leaveMessage = new Chat({
       username: 'System',
       room: room,
-      message: `${username} has left the room.`,
+      message: `${kakao_id} has left the room.`,
       timestamp: new Date()
     });
 
@@ -197,6 +240,14 @@ io.on('connection', (socket) => {
       io.to(room).emit('chatMessage', leaveMessage);
     } catch (err) {
       console.error('Error saving leave message:', err);
+    }
+
+    // 사용자의 inviteCode를 빈 문자열로 업데이트
+    try {
+      await User.updateOne({ kakao_id: kakao_id }, { $set: { invite_code: "" } });
+      console.log(`User ${kakao_id}'s invite code has been cleared.`);
+    } catch (err) {
+      console.error('Error updating user invite code:', err);
     }
 
     await checkAndDeleteRoom(room);
@@ -214,8 +265,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', async () => {
-    const { username, room } = socket;
-    console.log(`Client disconnected: ${username} from room ${room}`);
+    const { kakao_id } = socket.user;
+    const { room } = socket;
+    console.log(`Client disconnected: ${kakao_id} from room ${room}`);
     if (room) {
       socket.leave(room);
 
@@ -223,7 +275,7 @@ io.on('connection', (socket) => {
       const disconnectMessage = new Chat({
         username: 'System',
         room: room,
-        message: `${username} has disconnected.`,
+        message: `${kakao_id} has disconnected.`,
         timestamp: new Date()
       });
 
@@ -233,6 +285,14 @@ io.on('connection', (socket) => {
       } catch (err) {
         console.error('Error saving disconnect message:', err);
       }
+
+      // 사용자의 inviteCode를 빈 문자열로 업데이트
+    try {
+      await User.updateOne({ kakao_id: kakao_id }, { $set: { invite_code: "" } });
+      console.log(`User ${kakao_id}'s invite code has been cleared.`);
+    } catch (err) {
+      console.error('Error updating user invite code:', err);
+    }
 
       await checkAndDeleteRoom(room);
     }
