@@ -167,6 +167,8 @@ const authenticateJWT = (socket, next) => {
     err.data = { content: "Please retry later" }; // additional details
     return next(err);
   }
+
+  console.log('New client: ${token}');
   
   jwt.verify(token, TOKENSECRET, (err, user) => {
     if (err) {
