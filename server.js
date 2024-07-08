@@ -1,3 +1,183 @@
+require('dotenv').config();
+
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const axios = require('axios');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+const mongoUri = process.env.MONGODB_URI;
+const port = process.env.PORT || 3000;
+const TOKENSECRET = process.env.TOKKENSECRET || "your_jwt_secret_key";
+
+if (!mongoUri) {
+  console.error('MongoDB URI is not defined in .env file');
+  process.exit(1);
+}
+
+mongoose.connect(mongoUri)
+  .then(() => {
+    console.log('MongoDB connected');
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+  });
+
+// MongoDB 스키마 및 모델 설정
+const userSchema = new mongoose.Schema({
+  kakao_id: { type: String, required: true, unique: true },
+  account_email: { type: String, required: true },
+  name: { type: String, required: true },
+  profile_image: { type: String },
+  jwt_token: { type: String },  // JWT 토큰 필드 추가
+  invite_code: { type: String } // 채팅방 초대 코드 필드 추가
+});
+
+const User = mongoose.model("User", userSchema);
+
+const chatSchema = new mongoose.Schema({
+  username: String,
+  room: String,
+  message: String,
+  timestamp: { type: Date, default: Date.now }
+});
+
+const Chat = mongoose.model('Chat', chatSchema);
+
+app.use(express.json());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// 유저 조회
+const getUserById = async (kakaoId) => {
+  return await User.findOne({ kakao_id: kakaoId });
+};
+
+// 유저 등록
+const signUp = async (email, name, kakaoId, profileImage) => {
+  const jwtToken = jwt.sign({ kakao_id: kakaoId }, TOKENSECRET);
+  const newUser = new User({
+    kakao_id: kakaoId,
+    account_email: email,
+    name: name,
+    profile_image: profileImage,
+    jwt_token: jwtToken, // JWT 토큰 저장
+    invite_code: "" // invite_code는 아직 없다
+  });
+  return await newUser.save();
+};
+
+// 카카오 로그인 서비스
+const signInKakao = async (kakaoToken) => {
+  const result = await axios.get("https://kapi.kakao.com/v2/user/me", {
+    headers: {
+      Authorization: `Bearer ${kakaoToken}`,
+    },
+  });
+
+  const { data } = result;
+  
+  console.log('Kakao API response data:', data); // 응답 데이터 전체 출력
+
+  // 필요한 필드 추출
+  const name = data?.properties?.nickname;
+  const email = data?.kakao_account?.email;
+  const kakaoId = data?.id;
+  const profileImage = data?.properties?.profile_image;
+
+  // 필드별로 로그 출력
+  console.log('Extracted data:', { name, email, kakaoId, profileImage });
+
+  if (!name || !email || !kakaoId) {
+    console.error('Missing required user data:', { name, email, kakaoId });
+    throw new Error("KEY_ERROR");
+  }
+
+  let user = await getUserById(kakaoId);
+
+  if (!user) {
+    user = await signUp(email, name, kakaoId, profileImage);
+  } else {
+    // 기존 유저인 경우 jwt_token 갱신
+    user.jwt_token = jwt.sign({ kakao_id: user.kakao_id }, TOKENSECRET);
+    await user.save();
+  }
+
+  if (user) {
+    console.log('Add data:', { name, email, kakaoId, profileImage, jwt_token: user.jwt_token, invite_code: user.invite_code });
+  } else {
+    console.error('User object is undefined or null');
+  }
+
+  return user.jwt_token;
+};
+
+// 에러 처리 미들웨어
+const asyncWrap = (fn) => {
+  return (req, res, next) => {
+    fn(req, res, next).catch(next);
+  };
+};
+
+// 카카오 로그인 컨트롤러
+const signInKakaoController = asyncWrap(async (req, res) => {
+  const headers = req.headers["authorization"];
+  if (!headers) {
+    return res.status(400).json({ message: "Authorization header is missing" });
+  }
+  const kakaoToken = headers.split(" ")[1];
+
+  const accessToken = await signInKakao(kakaoToken);
+  
+  return res.status(200).json({ accessToken: accessToken });
+});
+
+// POST 요청 처리
+app.post('/auth/kakao/signin', signInKakaoController);
+
+// GET 요청 처리 (테스트 목적)
+app.get('/auth/kakao/signin', (req, res) => {
+  res.send('This endpoint is only for POST requests.');
+});
+
+// JWT 인증 엔드포인트 추가
+app.post('/auth', (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).send('Token is missing');
+  }
+
+  jwt.verify(token, TOKENSECRET, (err, user) => {
+    if (err) {
+      return res.status(403).send('Invalid token');
+    }
+
+    // 토큰이 유효한 경우
+    res.status(200).send('Authenticated');
+  });
+});
+
+// 에러 처리 라우터
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
 const jwt = require('jsonwebtoken');
 const io = require('socket.io')(server, {
   cors: {
