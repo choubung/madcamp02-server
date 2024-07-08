@@ -194,9 +194,11 @@ io.on('connection', (socket) => {
       if (user.invite_code == "") {
         try {
           await User.updateOne({ kakao_id: kakao_id }, { $set: { invite_code: inviteCode } });
-          console.log(`User ${kakao_id}'s invite code has been cleared.`);
+          console.log(`User ${kakao_id}'s invite code has been updated to ${inviteCode}.`);
+          user.invite_code = inviteCode; // 업데이트된 초대 코드를 로컬 변수에도 반영
         } catch (err) {
           console.error('Error updating user invite code:', err);
+          return socket.emit('error', 'Failed to update invite code');
         }
       } else if (user.invite_code !== inviteCode) {
         return socket.emit('error', 'Invalid invite code');
