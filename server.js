@@ -200,7 +200,6 @@ io.on('connection', (socket) => {
 
   socket.on('message', async (data) => {
     const { event, message } = JSON.parse(data);
-    console.log(`Received event: ${event}, message: ${message}`);
 
     if (event === 'joinRoom') {
       const inviteCode = message;
