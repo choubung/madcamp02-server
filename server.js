@@ -117,6 +117,8 @@ const signInKakao = async (kakaoToken) => {
     await user.save();
   }
 
+  console.log('Add data:', { name, email, kakaoId, profileImage, user.jwt_token, user.invite_code });
+
   return user.jwt_token;
 };
 
