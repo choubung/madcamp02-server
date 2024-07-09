@@ -256,18 +256,20 @@ io.on('connection', (socket) => {
       }
     } else if (event === 'chatMessage') {
       const { kakao_id } = socket.user
+      const user = await User.findOne({ kakao_id });
       const timestamp = new Date();
       const chatMessage = new Chat({
-        username: kakao_id,
+        username: user.name,
         room: socket.room,
         message: message,
         timestamp: new Date(),
-        profile_image: ""
+        profile_image: user.profile_image
     });
       
       try {
         await chatMessage.save();
         io.to(socket.room).emit('chatMessage', chatMessage);
+        console.log('send ${user.name}'s Chat.`);
       } catch (err) {
         console.error('Error saving chat message:', err);
       }
