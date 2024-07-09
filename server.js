@@ -210,7 +210,6 @@ io.on('connection', (socket) => {
 
     if (event === 'joinRoom') {
       const inviteCode = message;
-      // 기존 joinRoom 이벤트 처리 로직을 사용
       const { kakao_id } = socket.user;
 
       try {
@@ -220,14 +219,9 @@ io.on('connection', (socket) => {
         }
 
         if (user.invite_code == "") {
-          try {
-            await User.updateOne({ kakao_id: kakao_id }, { $set: { invite_code: inviteCode } });
-            console.log(`User ${kakao_id}'s invite code has been updated to ${inviteCode}.`);
-            user.invite_code = inviteCode; // 업데이트된 초대 코드를 로컬 변수에도 반영
-          } catch (err) {
-            console.error('Error updating user invite code:', err);
-            return socket.emit('error', 'Failed to update invite code');
-          }
+          await User.updateOne({ kakao_id: kakao_id }, { $set: { invite_code: inviteCode } });
+          console.log(`User ${kakao_id}'s invite code has been updated to ${inviteCode}.`);
+          user.invite_code = inviteCode; // 업데이트된 초대 코드를 로컬 변수에도 반영
         } else if (user.invite_code !== inviteCode) {
           return socket.emit('error', 'Invalid invite code');
         }
@@ -259,10 +253,13 @@ io.on('connection', (socket) => {
         socket.emit('error', 'An error occurred while joining the room');
       }
     } else if (event === 'chatMessage') {
-      // 기존 chatMessage 이벤트 처리 로직을 사용
-      const chatMessage = new Chat({ room: socket.room, username: socket.user.kakao_id, message });
+      const { kakao_id, name, profile_image } = socket.user;
+      const timestamp = new Date();
+      const chatMessage = { room: socket.room, username: name, message, timestamp, profile_image };
+      
       try {
-        await chatMessage.save();
+        const newChat = new Chat({ ...chatMessage, room: socket.room, username: kakao_id });
+        await newChat.save();
         io.to(socket.room).emit('chatMessage', chatMessage);
       } catch (err) {
         console.error('Error saving chat message:', err);
@@ -350,6 +347,7 @@ io.on('connection', (socket) => {
     }
   }
 });
+
 
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
