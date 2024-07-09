@@ -50,7 +50,8 @@ const chatSchema = new mongoose.Schema({
   username: String,
   room: String,
   message: String,
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
+  profile_image: String
 });
 
 const Chat = mongoose.model('Chat', chatSchema);
@@ -240,7 +241,8 @@ io.on('connection', (socket) => {
           username: 'System',
           room: room,
           message: `${user.name} has joined the room.`,
-          timestamp: new Date()
+          timestamp: new Date(),
+          profile_image: null
         });
 
         await joinMessage.save();
@@ -280,7 +282,8 @@ io.on('connection', (socket) => {
       username: 'System',
       room: room,
       message: `${kakao_id} has left the room.`,
-      timestamp: new Date()
+      timestamp: new Date(),
+      profile_image: null
     });
 
     try {
@@ -313,7 +316,8 @@ io.on('connection', (socket) => {
         username: 'System',
         room: room,
         message: `${kakao_id} has disconnected.`,
-        timestamp: new Date()
+        timestamp: new Date(),
+        profile_image: null
       });
 
       try {
