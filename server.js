@@ -255,14 +255,14 @@ io.on('connection', (socket) => {
         socket.emit('error', 'An error occurred while joining the room');
       }
     } else if (event === 'chatMessage') {
-      const { kakao_id, name, profile_image } = socket.user;
+      const { kakao_id } = socket.user
       const timestamp = new Date();
       const chatMessage = new Chat({
-        username: name,
+        username: kakao_id,
         room: socket.room,
         message: `${kakao_id} has left the room.`,
         timestamp: new Date(),
-        profile_image: profile_image
+        profile_image: null
     });
       
       try {
@@ -285,7 +285,7 @@ io.on('connection', (socket) => {
     // 안내 메시지 전송
     const leaveMessage = new Chat({
       username: 'System',
-      room: room,
+      room: socket.room,
       message: `${kakao_id} has left the room.`,
       timestamp: new Date(),
       profile_image: null
@@ -319,7 +319,7 @@ io.on('connection', (socket) => {
       // 안내 메시지 전송
       const disconnectMessage = new Chat({
         username: 'System',
-        room: room,
+        room: socket.room,
         message: `${kakao_id} has disconnected.`,
         timestamp: new Date(),
         profile_image: null
