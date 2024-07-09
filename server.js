@@ -269,7 +269,7 @@ io.on('connection', (socket) => {
       try {
         await chatMessage.save();
         io.to(socket.room).emit('chatMessage', chatMessage);
-        console.log('send ${user.name}'s Chat.`);
+        console.log('send ${user.name} s Chat.`);
       } catch (err) {
         console.error('Error saving chat message:', err);
       }
