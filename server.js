@@ -242,7 +242,7 @@ io.on('connection', (socket) => {
           room: room,
           message: `${user.name} has joined the room.`,
           timestamp: new Date(),
-          profile_image: null
+          profile_image: ""
         });
 
         await joinMessage.save();
@@ -262,7 +262,7 @@ io.on('connection', (socket) => {
         room: socket.room,
         message: `${kakao_id} has left the room.`,
         timestamp: new Date(),
-        profile_image: null
+        profile_image: ""
     });
       
       try {
@@ -288,7 +288,7 @@ io.on('connection', (socket) => {
       room: socket.room,
       message: `${kakao_id} has left the room.`,
       timestamp: new Date(),
-      profile_image: null
+      profile_image: ""
     });
 
     try {
@@ -322,7 +322,7 @@ io.on('connection', (socket) => {
         room: socket.room,
         message: `${kakao_id} has disconnected.`,
         timestamp: new Date(),
-        profile_image: null
+        profile_image: ""
       });
 
       try {
