@@ -259,7 +259,7 @@ io.on('connection', (socket) => {
       const timestamp = new Date();
       const chatMessage = new Chat({
         username: name,
-        room: room,
+        room: socket.room,
         message: `${kakao_id} has left the room.`,
         timestamp: new Date(),
         profile_image: profile_image
