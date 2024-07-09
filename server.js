@@ -257,11 +257,16 @@ io.on('connection', (socket) => {
     } else if (event === 'chatMessage') {
       const { kakao_id, name, profile_image } = socket.user;
       const timestamp = new Date();
-      const chatMessage = { room: socket.room, username: name, message, timestamp, profile_image };
+      const chatMessage = new Chat({
+        username: name,
+        room: room,
+        message: `${kakao_id} has left the room.`,
+        timestamp: new Date(),
+        profile_image: profile_image
+    });
       
       try {
-        const newChat = new Chat({ ...chatMessage, room: socket.room, username: kakao_id });
-        await newChat.save();
+        await chatMessage.save();
         io.to(socket.room).emit('chatMessage', chatMessage);
       } catch (err) {
         console.error('Error saving chat message:', err);
