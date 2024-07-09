@@ -265,7 +265,7 @@ io.on('connection', (socket) => {
         timestamp: new Date(),
         profile_image: user.profile_image
     });
-      console.log('send ${user.name} s Chat.`);
+      // console.log('send ${user.name} s Chat.`);
       
       try {
         await chatMessage.save();
