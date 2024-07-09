@@ -265,11 +265,11 @@ io.on('connection', (socket) => {
         timestamp: new Date(),
         profile_image: user.profile_image
     });
+      console.log('send ${user.name} s Chat.`);
       
       try {
         await chatMessage.save();
         io.to(socket.room).emit('chatMessage', chatMessage);
-        console.log('send ${user.name} s Chat.`);
       } catch (err) {
         console.error('Error saving chat message:', err);
       }
