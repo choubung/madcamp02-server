@@ -278,17 +278,18 @@ io.on('connection', (socket) => {
 
   socket.on('leaveRoom', async () => {
     const { kakao_id } = socket.user;
+    const user = await User.findOne({ kakao_id });
     const { room } = socket;
     if (!room) return;
 
     socket.leave(room);
-    console.log(`${kakao_id} left room ${room}`);
+    console.log(`${user.name} left room ${room}`);
 
     // 안내 메시지 전송
     const leaveMessage = new Chat({
       username: 'System',
       room: socket.room,
-      message: `${kakao_id} has left the room.`,
+      message: `${user.name} has left the room.`,
       timestamp: new Date(),
       profile_image: ""
     });
@@ -313,8 +314,9 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', async () => {
     const { kakao_id } = socket.user;
+    const user = await User.findOne({ kakao_id });
     const { room } = socket;
-    console.log(`Client disconnected: ${kakao_id} from room ${room}`);
+    console.log(`Client disconnected: ${user.name} from room ${room}`);
     if (room) {
       socket.leave(room);
 
@@ -322,7 +324,7 @@ io.on('connection', (socket) => {
       const disconnectMessage = new Chat({
         username: 'System',
         room: socket.room,
-        message: `${kakao_id} has disconnected.`,
+        message: `${user.name} has disconnected.`,
         timestamp: new Date(),
         profile_image: ""
       });
