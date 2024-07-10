@@ -163,7 +163,7 @@ app.post('/auth/UserInfo', (req, res) => {
       return res.status(403).send('Invalid token');
     }
 
-    Console.log('UserInfo: ${user}');
+    console.log('UserInfo: ${user}');
 
     // 토큰이 유효한 경우
     return res.status(200).json({ UserName: user.name, UserProfile: user.profile_image, UserMail: user.account_email });
