@@ -150,8 +150,7 @@ const signInKakaoController = asyncWrap(async (req, res) => {
 // POST 요청 처리
 app.post('/auth/kakao/signin', signInKakaoController);
 
-// POST 요청 처리: 유저 정보 찾아주기
-app.post('/auth/UserInfo', (req, res) => {
+const getUserInfoController = asyncWrap(async (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
 
   if (!token) {
@@ -170,7 +169,7 @@ app.post('/auth/UserInfo', (req, res) => {
 
       console.log('Get kakao_id: ', kakao_id, typeof kakao_id);
       
-      const user_info = getUserById(kakao_id);
+      const user_info = await getUserById(kakao_id);
 
       console.log('UserInfo: ', user_info.name, user_info.account_email);
       
@@ -181,6 +180,9 @@ app.post('/auth/UserInfo', (req, res) => {
     }
   });
 });
+
+// POST 요청 처리: 유저 정보 찾아주기
+app.post('/auth/UserInfo', getUserInfoController);
 
 // GET 요청 처리 (테스트 목적)
 app.get('/auth/kakao/signin', (req, res) => {
