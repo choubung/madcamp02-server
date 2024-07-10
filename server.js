@@ -274,7 +274,7 @@ io.on('connection', (socket) => {
         const joinMessage = new Chat({
           username: 'System',
           room: room,
-          message: `${user.name} has joined the room.`,
+          message: `${user.name} 님이 돈을 사용합니다.`,
           timestamp: new Date(),
           profile_image: ""
         });
@@ -323,7 +323,7 @@ io.on('connection', (socket) => {
     const leaveMessage = new Chat({
       username: 'System',
       room: socket.room,
-      message: `${user.name} has left the room.`,
+      message: `${user.name} 님이 방을 나갔습니다다.`,
       timestamp: new Date(),
       profile_image: ""
     });
@@ -358,7 +358,7 @@ io.on('connection', (socket) => {
       const disconnectMessage = new Chat({
         username: 'System',
         room: socket.room,
-        message: `${user.name} has disconnected.`,
+        message: `${user.name} 님의 연결이 끊어졌습니다.`,
         timestamp: new Date(),
         profile_image: ""
       });
