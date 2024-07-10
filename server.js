@@ -163,10 +163,18 @@ app.post('/auth/UserInfo', (req, res) => {
       return res.status(403).send('Invalid token');
     }
 
-    console.log('UserInfo: ', user, user.name);
+    console.log('Get user: ', user);
 
-    // 토큰이 유효한 경우
-    return res.status(200).json({ UserName: user.name, UserProfile: user.profile_image, UserMail: user.account_email });
+    try {
+      const user_info = await User.findOne({ kakao_id });
+
+      console.log('UserInfo: ', user_info.name, user_info.account_email);
+      
+      // 토큰이 유효한 경우
+      return res.status(200).json({ UserName: user_info.name, UserProfile: user_info.profile_image, UserMail: user_info.account_email });
+    } catch (err) {
+        console.error('Error saving chat message:', err);
+    }
   });
 });
 
