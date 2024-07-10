@@ -170,7 +170,7 @@ app.post('/auth/UserInfo', (req, res) => {
 
       console.log('Get kakao_id: ', kakao_id);
       
-      const user_info = User.getUserById(kakao_id);
+      const user_info = getUserById(kakao_id);
 
       console.log('UserInfo: ', user_info.name, user_info.account_email);
       
