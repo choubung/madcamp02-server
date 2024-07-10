@@ -166,7 +166,9 @@ app.post('/auth/UserInfo', (req, res) => {
     console.log('Get user: ', user);
 
     try {
-      const user_info = User.findOne(user.kakao_id);
+      const { kakao_id } = user;
+      
+      const user_info = User.findOne(kakao_id);
 
       console.log('UserInfo: ', user_info.name, user_info.account_email);
       
