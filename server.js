@@ -157,7 +157,7 @@ const getUserInfoController = asyncWrap(async (req, res) => {
     return res.status(401).send('Token is missing');
   }
 
-  jwt.verify(token, TOKENSECRET, (err, user) => {
+  jwt.verify(token, TOKENSECRET, asyncWrap(async (err, user) => {
     if (err) {
       return res.status(403).send('Invalid token');
     }
@@ -178,7 +178,7 @@ const getUserInfoController = asyncWrap(async (req, res) => {
     } catch (err) {
         console.error('Error saving chat message:', err);
     }
-  });
+  }));
 });
 
 // POST 요청 처리: 유저 정보 찾아주기
