@@ -167,6 +167,8 @@ app.post('/auth/UserInfo', (req, res) => {
 
     try {
       const { kakao_id } = user;
+
+      console.log('Get kakao_id: ', kakao_id);
       
       const user_info = User.findOne(kakao_id);
 
