@@ -168,7 +168,7 @@ app.post('/auth/UserInfo', (req, res) => {
     try {
       const { kakao_id } = user;
 
-      console.log('Get kakao_id: ', kakao_id);
+      console.log('Get kakao_id: ', kakao_id, typeof kakao_id);
       
       const user_info = getUserById(kakao_id);
 
