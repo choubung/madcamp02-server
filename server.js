@@ -150,7 +150,7 @@ const signInKakaoController = asyncWrap(async (req, res) => {
 // POST 요청 처리
 app.post('/auth/kakao/signin', signInKakaoController);
 
-// POST 요청 처리
+// POST 요청 처리: 유저 정보 찾아주기
 app.post('/auth/UserInfo', (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
 
@@ -166,7 +166,7 @@ app.post('/auth/UserInfo', (req, res) => {
     console.log('Get user: ', user);
 
     try {
-      const user_info = user.findOne({ kakao_id: user.kakao_id });
+      const user_info = User.findOne({ kakao_id: user.kakao_id });
 
       console.log('UserInfo: ', user_info.name, user_info.account_email);
       
