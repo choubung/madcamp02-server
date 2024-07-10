@@ -150,6 +150,26 @@ const signInKakaoController = asyncWrap(async (req, res) => {
 // POST 요청 처리
 app.post('/auth/kakao/signin', signInKakaoController);
 
+// POST 요청 처리
+app.post('/auth/UserInfo', (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).send('Token is missing');
+  }
+
+  jwt.verify(token, TOKENSECRET, (err, user) => {
+    if (err) {
+      return res.status(403).send('Invalid token');
+    }
+
+    Console.log('UserInfo: ${user}');
+
+    // 토큰이 유효한 경우
+    return res.status(200).json({ UserName: user.name, UserProfile: user.profile_image, UserMail: user.account_email });
+  });
+});
+
 // GET 요청 처리 (테스트 목적)
 app.get('/auth/kakao/signin', (req, res) => {
   res.send('This endpoint is only for POST requests.');
